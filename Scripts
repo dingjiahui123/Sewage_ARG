@@ -31,5 +31,17 @@ awk '{print 100*(($9-$8)/$7)}' long_MGE_primary.paf|paste long_MGE_primary.paf -
 awk '{print 100*($10/$11)}' long_MGE_primary_subcov.paf|paste long_MGE_primary_subcov.paf - > long_MGE_primary_subcov_id.paf
 awk '$(NF-1)>=80 && $NF>=80 {print}' long_MGE_primary_subcov_id.paf> long_MGE_primary_subcov_id_80_80.txt 
 
+#The microbial compositions for Illumina data and ARG host for Nanopore data were classified using Kraken2 v2.1.3 with GTDB (release 207).
+kraken2 --gzip-compressed input.fastq.gz --db GTDB_r207 --report kraken.K2report --output kraken.output
+
+#For homology analysis, the Nanopore reads were de novo assembled using Flye v2.9.2 with the mode “--meta”, followed by three cycles of polishing using Illumina reads with Pilon v1.24 for read correction.
+flye --meta --nano-hq long_clean.fastq.gz -i 1 -g 5m -o Flye_output/
+bowtie2-build assembly.fasta assembly.index
+bowtie2 -x assembly.index -1 short_clean_1.fastq -2 short_clean_2.fastq -S assembly.sam
+samtools view -Sub assembly.sam > assembly.bam
+samtools sort assembly.bam -O BAM -o assembly.sort.bam
+samtools index assembly.sort.bam
+java -jar pilon-1.24.jar --fix bases --genome assembly.fasta  --bam assembly.sort.bam --outdir polished_assembly
+
 
 
