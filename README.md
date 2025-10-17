@@ -1,1 +1,1 @@
-# Sewage_ARG
+"Highly resolved community sewage metagenomics unveiling landscape and transmission patterns of antibiotic resistome in Hong Kong populations" by Jiahui Ding, Mengying Wang, Xiaoqing Xu, Dou Wang, Xi Chen, Shuxian Li, Xiawan Zheng, You Che, Yu Deng, Tommy T.Y. Lam, Liguan Li, and Tong Zhang.
