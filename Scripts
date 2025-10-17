@@ -20,7 +20,7 @@ gunzip -c long_raw.fastq.gz | NanoFilt -q 10 -l 1000| gzip > long_filtered.fastq
 minimap2 -ax map-ont T2T-CHM13_database long_filtered.fastq.gz -o long_align.sam
 samtools view -buSh -f 4 long_align.sam | samtools fastq - | gzip -c - > long_clean.fastq.gz
 
-#For Nanopore data, ARGs were identified by aligning reads against the SARG v3.2.2 database using DIAMOND v2.1.872 at a maximum e-value of 1e-20, a minimum identity of 80%, and a minimum subject coverage of 80%.
+#For Nanopore data, ARGs were identified by aligning reads against the SARG v3.2.2 database using the BLASTX function of DIAMOND v2.1.8 at a maximum e-value of 1e-20, a minimum identity of 80%, and a minimum subject coverage of 80%.
 diamond makedb --in SARG_database.fasta --db SARG_database.dmnd
 diamond blastx --db SARG_database.dmnd --query long_clean.fastq.gz --out long_ARG.txt --evalue 1e-20 --subject-cover 80 --id 80 --range-culling -F 15 --range-cover 25 --max-hsps 0 --max-target-seqs 1 --sensitive
 
@@ -43,5 +43,12 @@ samtools sort assembly.bam -O BAM -o assembly.sort.bam
 samtools index assembly.sort.bam
 java -jar pilon-1.24.jar --fix bases --genome assembly.fasta  --bam assembly.sort.bam --outdir polished_assembly
 
+#The open reading frames (ORFs) of the corrected contigs were predicted using Prodigal v2.6.3 with the “-p meta” option. 
+prodigal -a pilon_orf.pep -d pilon_orf.cds -f gff -g 11  -o pilon_orf.gff -p meta -s pilon_orf.stat -i pilon.fasta
 
+#The ARGs-like ORFs were identified using the BLASTP function of DIAMOND v2.1.8 against the SARG v3.2.2 database at e-value ≤ 1e-20, identity ≥ 80%, and subject coverage ≥ 80%.
+diamond blastp --db SARG_database.dmnd --query pilon_orf.pep --out pilon_orf_ARG.txt --evalue 1e-20 --subject-cover 80 --id 80 --max-target-seqs 1 --sensitive --max-hsps 0
 
+#The sequences of ARGs were subjected to multiple alignment using Clustal Omega v1.2.4, and the maximum likelihood tree was then constructed using IQ-TREE2 v2.3.4. 
+clustalo -i ARG_orf.pep > ARG_align.pep
+iqtree2 -s ARG_align.pep -m MFP --alrt 1000 -B 1000 -T 40
