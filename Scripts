@@ -1,1 +1,11 @@
+#The Illumina data were filtered using fastp v0.23.4 with default parameters, then remove human sequences using bowtie2 v2.5.4.
+fastp -i short_raw_1.fastq.gz -I short_raw_2.fastq.gz -o short_filtered_1.fastq.gz -O short_filtered_2.fastq.gz
+bowtie2 -x T2T-CHM13_database -1 short_filtered_1.fastq.gz -2 short_filtered_2.fastq.gz -S short_align.sam
+samtools view -bS short_align.sam | samtools view -b -f 12 -F 256 > short_non_human.bam
+samtools sort -n short_non_human.bam -o short_non_human_sorted.bam
+samtools fastq short_non_human_sorted.bam -1 short_clean_1.fastq.gz -2 short_clean_2.fastq.gz -0 /dev/null -s /dev/null -n -c 6
 
+#The Nanopore data were filtered using NanoFilt v2.8.0 to remove reads shorter than 1000 bp, and low-quality reads with average quality scores of less than 10, then remove human sequences using minimap2 v2.26.
+gunzip -c long_raw.fastq.gz | NanoFilt -q 10 -l 1000| gzip > long_filtered.fastq.gz
+minimap2 -ax map-ont T2T-CHM13_database long_filtered.fastq.gz -o long_align.sam
+samtools view -buSh -f 4 long_align.sam | samtools fastq - | gzip -c - > long_clean.fastq.gz
