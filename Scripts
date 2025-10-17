@@ -5,6 +5,16 @@ samtools view -bS short_align.sam | samtools view -b -f 12 -F 256 > short_non_hu
 samtools sort -n short_non_human.bam -o short_non_human_sorted.bam
 samtools fastq short_non_human_sorted.bam -1 short_clean_1.fastq.gz -2 short_clean_2.fastq.gz -0 /dev/null -s /dev/null -n -c 6
 
+#For Illumina data, ARGs were quantified using ARGs_OAP v3.2.2 with default settings.
+args_oap stage_one -i input_file -o output_file -f fastq.gz
+args_oap stage_two -i output_file
+
+#For Illumina data, MGEs were quantified using ARGs_OAP v3.2.2 by replacing the reference database with the MGE database (Ellabaan, M.M.H., Munck, C., Porse, A. et al. Forecasting the dissemination of antibiotic resistance genes across bacterial genomes. Nat Commun 12, 2435 (2021). ).
+args_oap make_db -i database.fasta
+echo '>level1' | cat - database.fasta | grep '^>' | cut -d ' ' -f 1 | cut -c2- > structure.txt
+args_oap stage_one -i input_file -o output_file -f fastq.gz --database MGE_database.fasta
+args_oap stage_two -i output_file --database MGE_database.fasta --structure1 structure.txt
+
 #The Nanopore data were filtered using NanoFilt v2.8.0 to remove reads shorter than 1000 bp, and low-quality reads with average quality scores of less than 10, then remove human sequences using minimap2 v2.26.
 gunzip -c long_raw.fastq.gz | NanoFilt -q 10 -l 1000| gzip > long_filtered.fastq.gz
 minimap2 -ax map-ont T2T-CHM13_database long_filtered.fastq.gz -o long_align.sam
