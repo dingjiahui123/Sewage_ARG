@@ -10,8 +10,8 @@ args_oap stage_one -i input_file -o output_file -f fastq.gz
 args_oap stage_two -i output_file
 
 #For Illumina data, MGEs were quantified using ARGs_OAP v3.2.2 by replacing the reference database with the MGE database (Ellabaan, M.M.H., Munck, C., Porse, A. et al. Forecasting the dissemination of antibiotic resistance genes across bacterial genomes. Nat Commun 12, 2435 (2021). ).
-args_oap make_db -i database.fasta
-echo '>level1' | cat - database.fasta | grep '^>' | cut -d ' ' -f 1 | cut -c2- > structure.txt
+args_oap make_db -i MGE_database.fasta
+echo '>level1' | cat - MGE_database.fasta | grep '^>' | cut -d ' ' -f 1 | cut -c2- > structure.txt
 args_oap stage_one -i input_file -o output_file -f fastq.gz --database MGE_database.fasta
 args_oap stage_two -i output_file --database MGE_database.fasta --structure1 structure.txt
 
@@ -19,3 +19,17 @@ args_oap stage_two -i output_file --database MGE_database.fasta --structure1 str
 gunzip -c long_raw.fastq.gz | NanoFilt -q 10 -l 1000| gzip > long_filtered.fastq.gz
 minimap2 -ax map-ont T2T-CHM13_database long_filtered.fastq.gz -o long_align.sam
 samtools view -buSh -f 4 long_align.sam | samtools fastq - | gzip -c - > long_clean.fastq.gz
+
+#For Nanopore data, ARGs were identified by aligning reads against the SARG v3.2.2 database using DIAMOND v2.1.872 at a maximum e-value of 1e-20, a minimum identity of 80%, and a minimum subject coverage of 80%.
+diamond makedb --in SARG_database.fasta --db SARG_database.dmnd
+diamond blastx --db SARG_database.dmnd --query long_clean.fastq.gz --out long_ARG.txt --evalue 1e-20 --subject-cover 80 --id 80 --range-culling -F 15 --range-cover 25 --max-hsps 0 --max-target-seqs 1 --sensitive
+
+#For Nanopore data, MGEs were identified by aligning reads against the above mentioned MGE database using minimap2 v2.26 with a minimum identity of 80% and a minimum subject coverage of 80%.
+minimap2 -cx map-ont MGE_database.fasta long_clean.fastq.gz -o long_MGE.paf
+grep "tp:A:P" long_MGE.paf > long_MGE_primary.paf; 
+awk '{print 100*(($9-$8)/$7)}' long_MGE_primary.paf|paste long_MGE_primary.paf - > long_MGE_primary_subcov.paf
+awk '{print 100*($10/$11)}' long_MGE_primary_subcov.paf|paste long_MGE_primary_subcov.paf - > long_MGE_primary_subcov_id.paf
+awk '$(NF-1)>=80 && $NF>=80 {print}' long_MGE_primary_subcov_id.paf> long_MGE_primary_subcov_id_80_80.txt 
+
+
+
